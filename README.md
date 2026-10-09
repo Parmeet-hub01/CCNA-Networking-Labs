@@ -169,10 +169,69 @@ Committed all volatile active runtime configurations securely to permanent physi
 * **State Retention Execution:** Invoked the administrative command sequence `copy running-config startup-config` across both terminal instances. The prompt returns an explicit operational confirmation of `[OK]`, verifying that all configuration parameters and cryptographic hashes have migrated from volatile RAM arrays over to permanent, non-volatile NVRAM modules. This prevents a catastrophic loss of security architectures during unexpected physical hardware reboots or power loss loops.
 
 ---
+## Architecture 06: Ethernet Switching Mechanics & CAM Table Dynamics
 
-### 🛡️ Network Segmentation & Security Analysis
-This lab addresses a critical infrastructure vulnerability: **Plaintext Credential Exposure**. During initial configuration, deploying a standard clear-text password leaves system entry strings exposed to any user context traversing the local interfaces. 
+### 🌐 System Overview
+Investigated Layer 2 Ethernet operation focusing on Address Resolution Protocol (ARP) dynamics and switch Media Access Control (MAC) address table behavior within a multi-node Local Area Network (LAN). The core objective centered on analyzing broadcast frame propagation, unicast forwarding mechanisms, and how managed switches dynamically build, verify, and purge their Content Addressable Memory (CAM) tables.
 
-Two vital architectural security behaviors were verified during this hardening exercise:
-1. **Obfuscation vs. Strong Encryption:** Type 7 symmetric strings act merely as an obfuscation layer to prevent "over-the-shoulder" viewing; they contain no true algorithmic strength and are trivially decoded. Conversely, the Type 5 MD5 hash utilizes a secure one-way function that prevents mathematical reversal, forcing attackers to attempt compute-heavy brute-force attacks rather than direct deciphering.
-2. **Command Precedence & Privilege Isolation:** When both commands are implemented concurrently on a Cisco platform, the IOS command architecture automatically gives precedence to the highly secure `enable secret` parameter over the weaker `enable password`. This ensures that even if a legacy password remains in the configuration file, the operating system enforces the stronger cryptographic boundary during log-in challenges.
+### 📄 Lab Requirements & Constraints Checklist
+![Lab Instructions Checklist](06-Analyzing%20Ethernet%20Switching/taskimage.png)
+
+### 🖼️ Network Topology Diagram
+![Ethernet Switching Lab Topology](06-Analyzing%20Ethernet%20Switching/topology6.png)
+
+---
+
+### Task 1 & 2: ARP Discovery & Broadcast Propagation
+Analyzed localized broadcast frame propagation paths and unicast address bindings to observe initial Layer 2 flood-and-learn discovery mechanics.
+
+| ARP Packet Initiation | Broadcast Flooding Path | Unicast ARP Reply Delivery |
+| :---: | :---: | :---: |
+| <img src="06-Analyzing%20Ethernet%20Switching/task_2.1.png" width="300" alt="ARP Packet Initiation"> | <img src="06-Analyzing%20Ethernet%20Switching/task_2.2.png" width="300" alt="Broadcast Flooding Path"> | <img src="06-Analyzing%20Ethernet%20Switching/task_2.3.png" width="300" alt="Unicast ARP Reply Delivery"> |
+
+* **ARP Discovery Audit:** PC1 constructs an outbound ARP Request packet to resolve the MAC address of `192.168.1.3`.
+* **Broadcast Flooding Audit:** SW1 and SW2 flood the broadcast frame across all active interfaces. PC4 drops the packet (red X indicator) due to an IP mismatch.
+* **Unicast Reply Audit:** PC3 successfully returns a targeted unicast reply back to PC1, establishing bidirectional hardware bindings.
+
+---
+
+### Task 3: Complete MAC Table Population
+Simulated systematic network traffic across the remaining infrastructure nodes to force switches to inspect source MAC addresses and completely populate local lookup databases.
+
+| Traffic Generation | Simulation Panel Event List |
+| :---: | :---: |
+| <img src="06-Analyzing%20Ethernet%20Switching/task_3.1.png" width="400" alt="Traffic Generation"> | <img src="06-Analyzing%20Ethernet%20Switching/task_3.2.png" width="400" alt="Simulation Verification"> |
+
+* **Traffic Stimulation:** PC2 initializes an ICMP echo request targeting PC4 to stimulate Layer 2 lookup tables.
+* **State Verification:** The simulation event list captures successful ICMP frame traversals and multi-hop port-learning stages.
+
+---
+
+### Task 4: Switch Table Verification
+Executed administrative terminal controls using Cisco IOS CLI commands to audit and verify learned MAC-to-port mapping bindings across both network layers.
+
+| SW1 MAC Address Table | SW2 MAC Address Table |
+| :---: | :---: |
+| <img src="06-Analyzing%20Ethernet%20Switching/task_4_SW1.png" width="400" alt="SW1 Table"> | <img src="06-Analyzing%20Ethernet%20Switching/task_4_SW2.png" width="400" alt="SW2 Table"> |
+
+* **SW1 Table Audit:** Displays dynamic bindings for local access interfaces (`Fa0/1`, `Fa0/2`) and the inter-switch trunk pipeline (`Gi0/1`).
+* **SW2 Table Audit:** Displays dynamic mappings mapping remote endpoints down the uplink interface alongside local physical ports.
+
+---
+
+### Task 5: Dynamic Cache Maintenance
+Purged Content Addressable Memory (CAM) database arrays manually to evaluate how the switches return back to their baseline unpopulated states for diagnostic purposes.
+
+| Purging SW1 CAM Table | Purging SW2 CAM Table |
+| :---: | :---: |
+| <img src="06-Analyzing%20Ethernet%20Switching/task_5_SW1.png" width="400" alt="Purging SW1"> | <img src="06-Analyzing%20Ethernet%20Switching/task_5_SW2.png" width="400" alt="Purging SW2"> |
+
+* **Dynamic Wiping:** Issued `clear mac address-table dynamic` terminal parameters to break current interface tracking.
+* **Reset Baseline:** Clearing entries forces both switches to perform standard flood-and-learn mechanics on the next incoming frame ingress cycle.
+
+---
+
+### 🛡️ Layer 2 Data Link Risk Mitigation
+The architecture of the MAC address table serves as a foundational boundary for local area network privacy. Standard managed switches are vulnerable to **MAC Flooding Attacks**, where an attacker floods the switch with thousands of bogus MAC addresses using tools like `macof`. This exhausts the finite space in the switch's Content Addressable Memory (CAM) table, forcing the switch to fall back into a "fail-open" hub mode where it floods all incoming unicast frames to all ports, making sensitive traffic interceptable via passive packet sniffers.
+
+Transitioning from baseline dynamic learning to configured **Port Security mechanisms** introduces a highly resilient security posture. Implementing port security limits the maximum number of allowed MAC addresses per interface and allows administrators to hardcode legitimate source hardware addresses (`sticky MACs`). If an unauthorized address or an excessive frame threshold is detected, the interface triggers an immediate safety violation protocol (such as `shutdown` or `restrict`), instantly icons isolating the offending port and logging an administrative SNMP trap alert to stop the interception attempt before network exposure occurs.
