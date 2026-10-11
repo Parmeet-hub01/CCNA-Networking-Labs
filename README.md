@@ -235,3 +235,94 @@ Purged Content Addressable Memory (CAM) database arrays manually to evaluate how
 The architecture of the MAC address table serves as a foundational boundary for local area network privacy. Standard managed switches are vulnerable to **MAC Flooding Attacks**, where an attacker floods the switch with thousands of bogus MAC addresses using tools like `macof`. This exhausts the finite space in the switch's Content Addressable Memory (CAM) table, forcing the switch to fall back into a "fail-open" hub mode where it floods all incoming unicast frames to all ports, making sensitive traffic interceptable via passive packet sniffers.
 
 Transitioning from baseline dynamic learning to configured **Port Security mechanisms** introduces a highly resilient security posture. Implementing port security limits the maximum number of allowed MAC addresses per interface and allows administrators to hardcode legitimate source hardware addresses (`sticky MACs`). If an unauthorized address or an excessive frame threshold is detected, the interface triggers an immediate safety violation protocol (such as `shutdown` or `restrict`), instantly icons isolating the offending port and logging an administrative SNMP trap alert to stop the interception attempt before network exposure occurs.
+
+## Architecture 07: Basic Router Configuration & IP Subnet Assignment
+
+### 🌐 System Overview
+Utilized Cisco Packet Tracer to perform standard device bootstrap routines, interface IP addressing provisioning, and end-to-end multi-subnet verification. The scope of this architectural lab focused on provisioning functional default gateways across varied class structures (Class A, B, and C) and confirming cross-boundary ICMP transit path validation.
+
+### 📄 Lab Requirements & Constraints Checklist
+![Lab Instructions Checklist](/07-Configuring-IP-Addresses/taskimage.png)
+
+## 🖼️ Network Topology Diagram
+The physical deployment configures a central Cisco 2911 routing engine supporting three distinct operational segments interconnected via Catalyst 2960 distribution switches.
+
+![Network Topology](/07-Configuring-IP-Addresses/topology7.png)
+
+### 📊 Addressing Infrastructure Matrix
+
+| Device | Interface | IP Address | Subnet Mask | Default Gateway | Description / Segment |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **R1** | GigabitEthernet0/0 | `15.255.255.254` | `255.0.0.0` | N/A | Core Link to SW1 (15.0.0.0/8) |
+| **R1** | GigabitEthernet0/1 | `182.98.255.254` | `255.255.0.0` | N/A | Core Link to SW2 (182.98.0.0/16) |
+| **R1** | GigabitEthernet0/2 | `201.191.20.254` | `255.255.255.0` | N/A | Core Link to SW3 (201.191.20.0/24) |
+| **PC1** | FastEthernet0 | `15.0.0.1` | `255.0.0.0` | `15.255.255.254` | Blue Network Endpoint Zone |
+| **PC2** | FastEthernet0 | `182.98.0.1` | `255.255.0.0` | `182.98.255.254` | Green Network Endpoint Zone |
+| **PC3** | FastEthernet0 | `201.191.20.1` | `255.255.255.0` | `201.191.20.254` | Yellow Network Endpoint Zone |
+
+---
+
+## 🔍 Task 1: Configure R1's Hostname
+Accessed privileged global configuration schema to isolate the system profile and map the logical device identity footprint to R1.
+
+![Hostname Provisioning](/07-Configuring-IP-Addresses/task_1.png)
+
+---
+
+## 🔍 Task 2: Initial Interface Status Audit
+Executed baseline interface interrogation using the `show ip interface brief` command to view the status, protocols, and IP assignments prior to line configuration.
+
+![Initial Interface State](/07-Configuring-IP-Addresses/task_2.png)
+
+---
+
+## 🔍 Task 3: Interface Address Allocation & Descriptions
+Assigned targeted default gateway blocks alongside specific switch connection description tags across interfaces `Gi0/0`, `Gi0/1`, and `Gi0/2`, manually driving physical line protocols up via `no shutdown` commands.
+
+![Interface Address Provisioning](/07-Configuring-IP-Addresses/task_3.png)
+
+---
+
+## 🔍 Task 4: Post-Configuration Interface Status Verification
+Executed the `show ip interface brief` status check again to verify that all modified interfaces successfully transitioned to an active status.
+
+![Post-Configuration Verification](/07-Configuring-IP-Addresses/task_4.png)
+
+---
+
+## 🔍 Task 5: Running Configuration Audit & NVRAM Sync
+Reviewed the running configuration string to ensure parameters matched target structures, then saved the active state to the device startup configuration memory.
+
+![NVRAM Memory Storage](/07-Configuring-IP-Addresses/task_5.png)
+
+---
+
+## 🔍 Task 6: Endpoint Host Addressing (PC1, PC2, & PC3)
+Statically assigned host computer network values (IPv4 Addresses, Subnet Masks, and Default Gateways) targeting their respective router interface segments.
+
+| PC1 Endpoint Stacking | PC2 Endpoint Stacking |
+| :---: | :---: |
+| ![PC1 Configuration](/07-Configuring-IP-Addresses/task_6.1.png) | ![PC2 Configuration](/07-Configuring-IP-Addresses/task_6.2.png) |
+
+| PC3 Endpoint Stacking |
+| :---: |
+| ![PC3 Configuration](/07-Configuring-IP-Addresses/task_6.3.png) |
+
+---
+
+## 🔍 Task 7: End-to-End Inter-Subnet Connectivity Verification
+Initiated standard ICMP Echo Requests from **PC1** out across routed boundaries to evaluate communication path viability to **PC2** and **PC3**.
+
+| Cross-Subnet Ping to PC2 (`182.98.0.1`) | Cross-Subnet Ping to PC3 (`201.191.20.1`) |
+| :---: | :---: |
+| ![Ping Verification 1](/07-Configuring-IP-Addresses/task_7.1.png) | ![Ping Verification 2](/07-Configuring-IP-Addresses/task_7.2.png) |
+
+---
+
+### 🛡️ Protocol Analysis & Security Insights
+From an operational security and design perspective, auditing raw layer-3 interface behavior and boundary-crossing dynamics provides the foundation for hardened infrastructure engineering.
+
+* **ARP & Latency Vectors:** The initial packet drop observed during cross-subnet pings highlights the stateful dependency on the **Address Resolution Protocol (ARP)**. When PC1 aims to transmit outside its local network segment, it cannot directly request the destination host's hardware identity. Instead, it must resolve the MAC address of its local default gateway interface (`15.255.255.254`). Analyzing these layer-2 broadcast dependency behaviors underscores why unauthenticated environments are highly vulnerable to **ARP Spoofing/Poisoning attacks**, allowing adversaries to misdirect gateway traffic flows.
+* **Routing Control Security:** Enabling structural interfaces via `no shutdown` exposes the physical layer to active data parsing. In high-security architectures, leaving unassigned routing boundaries or host access ports wide open without baseline controls presents massive exploitation surfaces. Understanding interface-to-gateway mapping demonstrates why network administrators must protect routing elements by deploying features like **Dynamic ARP Inspection (DAI)** on access switches and configuring strong control plane protections (such as securing the management plane via SSH and shutting down unused physical interfaces) to maintain environment integrity.
+
+---
